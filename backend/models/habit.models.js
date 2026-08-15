@@ -1,4 +1,4 @@
-import { mongoose, Schema } from "mongoose";
+import mongoose, {Schema} from "mongoose";
 import crypto from "node:crypto";
 
 const habitSchema = new Schema(
@@ -63,6 +63,4 @@ const habitSchema = new Schema(
   },
 );
 
-const Habit = mongoose.model("Habit", habitSchema);
-
-export { Habit };
+export const Habit = mongoose.model("Habit", habitSchema);

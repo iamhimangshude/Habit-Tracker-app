@@ -1,6 +1,11 @@
 import { app } from "./app.js";
 import { dbConnection } from "./db/mongodbConf.db.js";
 import mongoose from "mongoose";
+import { configDotenv } from "dotenv";
+
+configDotenv({
+  path: "./.env",
+});
 
 const PORT = process.env.PORT || 8001;
 
@@ -10,7 +15,6 @@ dbConnection()
       console.log(`Server is active on http://localhost:${PORT}`);
     });
   })
-  .then(async () => await mongoose.disconnect())
   .catch(async (err) => {
     console.log("ERR: " + err.name + "\n ERR_msg: " + err.message);
     await mongoose.disconnect();
