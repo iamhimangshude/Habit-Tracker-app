@@ -3,18 +3,22 @@
   "version": "1.0.0",
   "description": "a simple backend application for habit tracking system",
   "main": "server.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --detectOpenHandles",
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
   "keywords": [],
   "author": "Himangshu De (iamhimangshude)",
   "license": "ISC",
-  "type": "module",
   "dependencies": {
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "mongoose": "^9.9.2"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "supertest": "^7.2.2"
   }
 }
