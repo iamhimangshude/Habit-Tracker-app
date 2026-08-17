@@ -5,7 +5,7 @@ import { ErrorResponse } from "../utils/errorResponse.utils.js";
 export function errorHandler(err, req, res, next) {
   let error = err;
   if (!(error instanceof ErrorResponse)) {
-    const status = error.status || error instanceof mongoose.Error ? 400 : 500;
+    const status = error.status || error instanceof mongoose.Error ? 500 : 400;
 
     const message = error.message || "Something went wrong";
     error = new ErrorResponse(status, message, err?.errors || [], err.stack);

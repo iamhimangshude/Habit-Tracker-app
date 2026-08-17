@@ -1,18 +1,27 @@
 import express from "express";
-import habitRoutes from "./routes/habit.routes.js";
-import analyticsRoutes from "./routes/analytics.routes.js";
+import {
+  habitRoutes,
+  analyticsRoutes,
+  authRoutes,
+} from "./routes/index.routes.js";
+import cookieParser from "cookie-parser";
 
 const app = express();
 
 app.use(express.json());
 
+app.use(cookieParser());
+
 app.get("/", function (req, res) {
   return res.json({ message: "Hello world" });
 });
 
-// Registering habit routes
 const BASE_URL = process.env.BASE_URL || "/api/v1";
 
+// Registering auth routes
+app.use(`${BASE_URL}/auth`, authRoutes);
+
+// Registering habit routes
 app.use(`${BASE_URL}/habits`, habitRoutes);
 
 // registering analytics routes
