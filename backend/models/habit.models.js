@@ -1,11 +1,17 @@
 import mongoose, { Schema } from "mongoose";
 import crypto from "node:crypto";
+import { User } from "./user.models.js";
 
 const habitSchema = new Schema(
   {
     _id: {
       type: String,
       default: () => crypto.randomUUID(),
+    },
+    user: {
+      type: String,
+      required: [true, "user is required!"],
+      ref: "User",
     },
     name: {
       type: String,
