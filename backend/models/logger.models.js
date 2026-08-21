@@ -1,4 +1,4 @@
-import mongoose, {Schema} from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import crypto from "node:crypto";
 
 const loggerSchema = new Schema(
@@ -7,10 +7,17 @@ const loggerSchema = new Schema(
       type: String,
       default: () => crypto.randomUUID(),
     },
+    user: {
+      type: String,
+      ref: "User",
+      required: [true, "user is required"],
+      index: true,
+    },
     habit: {
       type: String,
       ref: "Habit",
-      required: true,
+      required: [true, "habit is required"],
+      index: true,
     },
     date: {
       type: String,
@@ -35,6 +42,7 @@ const loggerSchema = new Schema(
 );
 
 loggerSchema.index({ habit: 1, date: 1 }, { unique: true });
+loggerSchema.index({ user: 1, date: 1 });
 
 const Logger = mongoose.model("Logger", loggerSchema);
 

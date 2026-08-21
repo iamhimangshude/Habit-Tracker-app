@@ -5,22 +5,23 @@ import { Response } from "../utils/response.utils.js";
 export async function overview(req, res, next) {
   try {
     const { date } = req.query;
-    const options = {};
-    if (!date) {
-      let year = new Date().getFullYear(),
-        month = Date().getMonth(),
-        day = new Date().getDay();
-      options.date = `${year}-${month}-${day}`;
-    } else options.date = date;
+    const userId = req.user.id;
+    const today = new Date();
+    const formattedDate =
+      date ||
+      `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-    options.isCompleted = true;
-    const queryData = (await Logger.find(options))?.map(
-      (item) => item.habit.isArchived === false,
-    );
+    const loggerData = await Logger.find({
+      user: userId,
+      date: formattedDate,
+      isCompleted: true,
+    })
+      .sort({ date: 1 })
+      .lean();
 
     return res
       .status(200)
-      .json(new Response(200, "operation success", queryData));
+      .json(new Response(200, "overview fetched", loggerData));
   } catch (error) {
     next(error);
   }
