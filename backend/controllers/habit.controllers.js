@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Habit, Logger, User } from "../models/index.models.js";
 import { ErrorResponse } from "../utils/errorResponse.utils.js";
 import { Response } from "../utils/response.utils.js";
@@ -119,13 +120,38 @@ export async function updateHabitSetArchive(req, res, next) {
     const id = req.user.id;
     const { id: habitId } = req.params;
 
-    const targetHabit = await Habit.findOneAndUpdate(
-      { _id: habitId, user: id },
-      { $set: { isArchived: true, archivedAt: new Date() } },
-      { runValidators: true, returnDocument: "after" },
-    );
+    const session = await mongoose.startSession();
 
-    if (!targetHabit) throw new ErrorResponse(404, "habit not found");
+    let targetHabit;
+
+    try {
+      await session.withTransaction(async () => {
+        targetHabit = await Habit.findOneAndUpdate(
+          { _id: habitId, user: id, isArchived: false },
+          { $set: { isArchived: true, archivedAt: new Date() } },
+          { runValidators: true, returnDocument: "after" },
+        ).session(session);
+
+        if (!targetHabit) throw new ErrorResponse(404, "habit not found");
+
+        const logs = await Logger.updateMany(
+          {
+            habit: habitId,
+            user: id,
+          },
+          { $set: { isDeleted: true, deletedAt: new Date() } },
+          { session: session },
+        );
+      });
+    } catch (error) {
+      console.log(error);
+      throw new ErrorResponse(
+        error.status || 500,
+        error.message || "backend operation failed! Try again later!",
+      );
+    } finally {
+      await session.endSession();
+    }
 
     return res
       .status(200)
@@ -140,12 +166,41 @@ export async function updateHabitUnsetArchive(req, res, next) {
     const userId = req.user.id;
     const { id: habitId } = req.params;
 
-    const targetHabit = await Habit.findOneAndUpdate(
-      { _id: habitId, user: userId, isArchived: true },
-      { $set: { isArchived: false, archivedAt: null } },
-      { runValidators: true, returnDocument: "after" },
-    );
-    if (!targetHabit) throw new ErrorResponse(404, "habit not found");
+    const session = await mongoose.startSession();
+
+    let targetHabit;
+
+    try {
+      await session.withTransaction(async () => {
+        targetHabit = await Habit.findOneAndUpdate(
+          { _id: habitId, user: userId, isArchived: true },
+          { $set: { isArchived: false, archivedAt: null } },
+          { runValidators: true, returnDocument: "after" },
+        ).session(session);
+
+        if (!targetHabit) throw new ErrorResponse(404, "habit not found");
+
+        const logs = await Logger.updateMany(
+          {
+            habit: targetHabit._id,
+            user: userId,
+          },
+          {
+            $set: { isDeleted: false, deletedAt: null },
+          },
+          { session: session },
+        );
+      });
+    } catch (error) {
+      console.log(error);
+      throw new ErrorResponse(
+        error.status || 500,
+        error.message || "backend operation failure! Try again",
+      );
+    } finally {
+      await session.endSession();
+    }
+
     return res
       .status(200)
       .json(new Response(200, "habit unarchived", targetHabit.toObject()));
@@ -162,6 +217,7 @@ export async function getHabitStats(req, res, next) {
     const targetHabit = await Habit.findOne({
       _id: habitId,
       user: userId,
+      isArchived: false,
     }).lean();
 
     if (!targetHabit) throw new ErrorResponse(404, "habit not found");
@@ -169,6 +225,7 @@ export async function getHabitStats(req, res, next) {
     const totalCompletedDays = await Logger.countDocuments({
       habit: habitId,
       isCompleted: true,
+      isDeleted: false,
     });
 
     const statsObj = {
@@ -190,16 +247,25 @@ export async function toggleHabitCompletion(req, res, next) {
   try {
     const userId = req.user.id;
     const { id: habitId } = req.params;
-    const { date } = req.body;
+    const todayStr = new Date().toISOString().split("T")[0];
+    const date = req.body?.date || todayStr;
 
-    if (!date) {
-      throw new ErrorResponse(400, "date is required, format: YYYY-MM-DD");
-    }
+    const habit = await Habit.findOne({
+      _id: habitId,
+      user: userId,
+      isArchived: false,
+    });
+    if (!habit) throw new ErrorResponse(404, "habit not found or is archived");
 
-    if (!(await Habit.exists({ _id: habitId, user: userId })))
-      throw new ErrorResponse(404, "habit not found");
+    let log = await Logger.findOne({
+      habit: habitId,
+      user: userId,
+      date: date,
+    });
 
-    let log = await Logger.findOne({ habit: habitId, date: date });
+    // preventing the backdating before habit creation
+    if (date < habit.createdAt.toISOString().split("T")[0])
+      throw new ErrorResponse(400, "cannot log habit before its creation date");
 
     if (log) {
       log.isCompleted = !log.isCompleted;
@@ -212,6 +278,7 @@ export async function toggleHabitCompletion(req, res, next) {
         date,
         isCompleted: true,
         value: 1,
+        user: userId,
         completedAt: new Date(),
       });
     }
@@ -239,17 +306,22 @@ export async function getHabitLogs(req, res, next) {
 
     let logData;
 
-    if (!(await Habit.exists({ _id: habitId, user: userId })))
+    if (
+      !(await Habit.exists({ _id: habitId, user: userId, isArchived: false }))
+    )
       throw new ErrorResponse(404, "habit not found");
 
     const options = {
       habit: habitId,
+      user: userId,
+      isDeleted: false,
     };
 
     if (startDate || endDate) {
       options.date = {};
       if (startDate) options.date.$gte = startDate;
-      if (endDate) options.date.$lte = endDate;
+      if (endDate)
+        options.date.$lte = endDate || new Date().toISOString().split("T")[0];
     }
 
     logData = await Logger.find(options).sort({ date: -1 }).lean();
