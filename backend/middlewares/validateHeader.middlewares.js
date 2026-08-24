@@ -4,6 +4,10 @@ import { User } from "../models/user.models.js";
 
 export async function validateHeader(req, res, next) {
   try {
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) throw new ErrorResponse(401, "invalid token");
+
     const authHeader =
       req.headers["authorization"] || req.headers["Authorization"];
 
@@ -15,9 +19,13 @@ export async function validateHeader(req, res, next) {
 
     if (!token) throw new ErrorResponse(401, "unauthorized: token not provied");
 
-    let decodedData;
+    let decodedData, refreshTokenData;
     try {
       decodedData = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+      refreshTokenData = jwt.verify(
+        refreshToken,
+        process.env.REFRESH_TOKEN_SECRET,
+      );
     } catch (jwtError) {
       if (jwtError.name === "TokenExpiredError") {
         throw new ErrorResponse(401, "token expired");

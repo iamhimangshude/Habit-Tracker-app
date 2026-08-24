@@ -164,7 +164,6 @@ export async function getUser(req, res, next) {
   }
 }
 
-// TODO: implement delete controller logic, then head to routes!
 export async function deleteUser(req, res, next) {
   try {
     const id = req.user.id;
@@ -247,6 +246,31 @@ export async function generateAccessTokenAndRefreshToken(req, res, next) {
           accessToken: access,
         }),
       );
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function logoutUser(req, res, next) {
+  try {
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+
+    user.refreshToken = null;
+
+    await user.save();
+
+    if (!user) throw new ErrorResponse(404, "user not found");
+
+    return res
+      .status(200)
+      .clearCookie("refreshToken", {
+        httpOnly: true,
+        sameSite: "strict",
+        secure: true,
+      })
+      .json(new Response(200, "logout succesful", null));
   } catch (error) {
     next(error);
   }

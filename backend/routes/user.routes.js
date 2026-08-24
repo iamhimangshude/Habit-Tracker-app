@@ -5,6 +5,7 @@ import {
   generateAccessTokenAndRefreshToken,
   getUser,
   loginUser,
+  logoutUser,
   updateUser,
 } from "../controllers/user.controllers.js";
 import { validateHeader } from "../middlewares/validateHeader.middlewares.js";
@@ -15,6 +16,7 @@ router.route("/register").post(createUser);
 router.route("/login").post(loginUser);
 router.route("/user/issue/tokens").post(generateAccessTokenAndRefreshToken);
 
+router.route("/logout").post(validateHeader, logoutUser);
 router.route("/user/details").get(validateHeader, getUser);
 router.route("/user/update").patch(validateHeader, updateUser);
 router.route("/user/delete").delete(validateHeader, deleteUser);
