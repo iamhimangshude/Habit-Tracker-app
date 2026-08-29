@@ -134,7 +134,7 @@ export async function updateHabitSetArchive(req, res, next) {
 
         if (!targetHabit) throw new ErrorResponse(404, "habit not found");
 
-        const logs = await Logger.updateMany(
+        await Logger.updateMany(
           {
             habit: habitId,
             user: id,
@@ -145,10 +145,7 @@ export async function updateHabitSetArchive(req, res, next) {
       });
     } catch (error) {
       console.log(error);
-      throw new ErrorResponse(
-        error.status || 500,
-        error.message || "backend operation failed! Try again later!",
-      );
+      next(error);
     } finally {
       await session.endSession();
     }

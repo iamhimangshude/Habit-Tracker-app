@@ -1,4 +1,5 @@
-import { User } from "../models/index.models.js";
+import mongoose from "mongoose";
+import { Habit, Logger, User } from "../models/index.models.js";
 import { ErrorResponse } from "../utils/errorResponse.utils.js";
 import { generateTokens } from "../utils/generateToken.utils.js";
 import { Response } from "../utils/response.utils.js";
@@ -168,10 +169,22 @@ export async function deleteUser(req, res, next) {
   try {
     const id = req.user.id;
 
-    const user = await User.findByIdAndDelete(id);
+    const session = await mongoose.startSession();
 
-    if (!user) {
-      throw new ErrorResponse(404, "user not found");
+    try {
+      await session.withTransaction(async () => {
+        const user = await User.findByIdAndDelete(id).session(session);
+        if (!user) {
+          throw new ErrorResponse(404, "user not found");
+        }
+        await Habit.deleteMany({ user: user._id }).session(session);
+        await Logger.deleteMany({ user: user._id }).session(session);
+      });
+    } catch (e) {
+      console.log(e);
+      next(e);
+    } finally {
+      await session.endSession();
     }
 
     return res
